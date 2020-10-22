@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'dart:convert' as convert;
 import 'package:http/http.dart' as http;
@@ -49,15 +52,23 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          loadFromNetwork();
+        },
+        child: Icon(Icons.navigation),
+        backgroundColor: Colors.green,
+      ),
       body: Center(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          // mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
               'This was loaded from network:',
             ),
-            renderFromNetwork(),
+            Expanded(
+              child: Container(child: Text(content)),
+            ),
             Text(
               'This was loaded from webview:',
             ),
@@ -72,42 +83,28 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  renderFromNetwork() {
-    return FutureBuilder(
-        future: _networkCall(),
-        builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-          if (snapshot.data != null) {
-            return Container(
-                padding: EdgeInsets.all(10),
-                color: Colors.green,
-                child: Text(snapshot.data['title']));
-          }
-          if (snapshot.hasError) {
-            print(snapshot.error);
-            return Container(
-                padding: EdgeInsets.all(10),
-                color: Colors.red,
-                child: Text('We FAILED with the request ... ${snapshot.error}'));
-          }
-
-          return Container(child: Text('loading'));
-        });
-    // StreamBuilder(stream: ,)
-  }
-
   String _url() {
     return 'https://meduza.io/api/f1/en/news/2020/10/01/russian-state-duma-speaker-says-navalny-should-thank-putin-for-saving-his-life-not-blame-him-for-an-attempted-assassination';
   }
 
-  _networkCall() async {
+  String content = "nothing yet";
+
+  loadFromNetwork() async {
     try {
-      return http.get(_url()).then((rsp) {
-        return convert.jsonDecode(rsp.body);
+      HttpClient client = new HttpClient();
+      // client.findProxy = HttpClient.findProxyFromEnvironment;
+
+      client.getUrl(Uri.parse(_url())).then((HttpClientRequest request) {
+        return request.close();
+      }).then((HttpClientResponse response) {
+        response.transform(utf8.decoder).listen((contents) {
+          setState(() {
+            content = contents;
+          });
+        });
       });
     } catch (e) {
-      print('Errored out with:');
       print(e);
-      return Future.error(e.toString());
     }
   }
 }
